@@ -25,13 +25,36 @@ export default function CertifyPage() {
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        alert("Image trop grande / Image too large (< 2MB)");
-        return;
-      }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData({ ...formData, photoUri: reader.result }); // Base64
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 150; // Compression extrême pour le PoC (Base64 < 10KB)
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+               height *= MAX_SIZE / width;
+               width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+               width *= MAX_SIZE / height;
+               height = MAX_SIZE;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Qualité JPEG 0.6 = très léger
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+          setFormData({ ...formData, photoUri: dataUrl });
+        };
+        img.src = reader.result;
       };
       reader.readAsDataURL(file);
     }
@@ -52,18 +75,18 @@ export default function CertifyPage() {
       const data = await response.json();
 
       try {
-        // Sauvegarde temporaire pour le scan cross-device
-        const blobRes = await fetch('https://jsonblob.com/api/jsonBlob', {
+        // Sauvegarde temporaire via le proxy interne pour éviter CORS et PayloadTooLarge
+        const blobRes = await fetch('/api/blob', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: data.credentialToken })
         });
-        const loc = blobRes.headers.get('Location');
-        if (loc) {
-          data.blobId = loc.split('/').pop();
+        const blobData = await blobRes.json();
+        if (blobData.id) {
+          data.blobId = blobData.id;
         }
       } catch (err) {
-        console.warn("JsonBlob upload failed", err);
+        console.warn("Proxy upload failed", err);
       }
 
       setResult(data);

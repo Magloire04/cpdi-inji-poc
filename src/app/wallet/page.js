@@ -65,8 +65,8 @@ export default function WalletPage() {
       // Si c'est une URI "inji://vc?id=XXX" venant d'un vrai scan de Certify
       if (tokenString.startsWith("inji://vc?id=")) {
         const blobId = tokenString.split('id=')[1];
-        const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`);
-        if (!res.ok) throw new Error("Erreur de téléchargement");
+        const res = await fetch(`/api/blob?id=${blobId}`);
+        if (!res.ok) throw new Error("Erreur de téléchargement du proxy");
         const data = await res.json();
         finalToken = data.token;
       }
