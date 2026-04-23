@@ -50,6 +50,22 @@ export default function CertifyPage() {
       });
       
       const data = await response.json();
+
+      try {
+        // Sauvegarde temporaire pour le scan cross-device
+        const blobRes = await fetch('https://jsonblob.com/api/jsonBlob', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ token: data.credentialToken })
+        });
+        const loc = blobRes.headers.get('Location');
+        if (loc) {
+          data.blobId = loc.split('/').pop();
+        }
+      } catch (err) {
+        console.warn("JsonBlob upload failed", err);
+      }
+
       setResult(data);
     } catch (err) {
       console.error(err);
@@ -126,8 +142,8 @@ export default function CertifyPage() {
               </p>
               
               <div style={{ background: 'white', padding: '16px', borderRadius: '16px', display: 'inline-block', margin: '0 auto 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                {/* Le QR Code ne peut pas contenir 2MB de base64, on simule l'offre OIDC avec un ID court */}
-                <QRCodeCanvas value={`mosip:credential-offer?id=${result.rawPayload.credentialSubject.id}`} size={256} />
+                {/* Simulation de l'offre OpenID4VCI avec un ID de session externe */}
+                <QRCodeCanvas value={result.blobId ? `inji://vc?id=${result.blobId}` : `mosip:test`} size={256} />
               </div>
               
               <div style={{ marginBottom: '24px' }}>

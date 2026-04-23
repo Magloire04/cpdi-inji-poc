@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Camera, CreditCard, ShieldCheck } from 'lucide-react';
 import * as jose from 'jose';
 import { useLanguage } from '@/components/LanguageContext';
@@ -10,6 +10,9 @@ export default function WalletPage() {
   const [credentials, setCredentials] = useState([]);
   const [pastedToken, setPastedToken] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [loadingScan, setLoadingScan] = useState(false);
+  
+  const scannerRef = useRef(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('inji_wallet_credentials');
@@ -18,15 +21,62 @@ export default function WalletPage() {
     }
   }, []);
 
-  const handleSimulateScan = () => {
-    if (!pastedToken) return;
+  useEffect(() => {
+    if (showScanner) {
+      import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
+        if (!document.getElementById("reader")) return;
+        
+        scannerRef.current = new Html5QrcodeScanner(
+          "reader",
+          { fps: 10, qrbox: {width: 200, height: 200} },
+          false
+        );
+        
+        scannerRef.current.render(
+          (decodedText) => {
+            console.log("QR Code détecté", decodedText);
+            scannerRef.current.clear();
+            processToken(decodedText);
+          },
+          (err) => {}
+        );
+      });
+    } else {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(e => console.error(e));
+        scannerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(e => console.error(e));
+      }
+    };
+  }, [showScanner]);
+
+  const processToken = async (tokenString) => {
+    if (!tokenString) return;
+    setLoadingScan(true);
+    
     try {
-      const decoded = jose.decodeJwt(pastedToken);
+      let finalToken = tokenString;
+      
+      // Si c'est une URI "inji://vc?id=XXX" venant d'un vrai scan de Certify
+      if (tokenString.startsWith("inji://vc?id=")) {
+        const blobId = tokenString.split('id=')[1];
+        const res = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`);
+        if (!res.ok) throw new Error("Erreur de téléchargement");
+        const data = await res.json();
+        finalToken = data.token;
+      }
+
+      const decoded = jose.decodeJwt(finalToken);
       if (!decoded.vc) throw new Error("Format Invalide");
 
       const newCred = {
         id: new Date().getTime(),
-        token: pastedToken,
+        token: finalToken,
         data: decoded.vc.credentialSubject,
         issuer: decoded.vc.issuer,
         date: decoded.vc.issuanceDate
@@ -38,8 +88,15 @@ export default function WalletPage() {
       setPastedToken('');
       setShowScanner(false);
     } catch (e) {
+      console.error(e);
       alert(t('wallet', 'invalidData'));
+    } finally {
+      setLoadingScan(false);
     }
+  };
+
+  const handleSimulateScan = () => {
+    processToken(pastedToken);
   };
 
   const handleClear = () => {
@@ -69,7 +126,25 @@ export default function WalletPage() {
 
           <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
             
-            {credentials.length === 0 ? (
+            {loadingScan ? (
+              <div style={{ textAlign: 'center', marginTop: '60px', color: 'var(--cdpi-blue)' }}>
+                 <h3>Téléchargement...</h3>
+                 <p style={{ fontSize: '0.9rem' }}>Contact avec l'émetteur Inji</p>
+              </div>
+            ) : showScanner ? (
+              <div style={{ background: 'white', padding: '16px', borderRadius: '12px', marginTop: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>📸 Scan par Caméra</h4>
+                
+                {/* HTML5 QR Code Container */}
+                <div id="reader" style={{ width: '100%', marginBottom: '16px', overflow: 'hidden', borderRadius: '8px' }}></div>
+
+                <div style={{ borderTop: '1px solid #eee', paddingTop: '16px', marginTop: '16px' }}>
+                  <h4 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>Ou Collage (Manuel)</h4>
+                  <textarea className="form-control" rows="2" value={pastedToken} onChange={e => setPastedToken(e.target.value)} style={{ fontSize: '0.7rem', fontFamily: 'monospace' }} placeholder="Collez le JWT ou l'URI ici..." />
+                  <button className="btn btn-primary" style={{ width: '100%', marginTop: '8px' }} onClick={handleSimulateScan}>{t('wallet', 'btnImport')}</button>
+                </div>
+              </div>
+            ) : credentials.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: '60px', color: 'var(--text-muted)' }}>
                 <CreditCard size={48} style={{ margin: '0 auto', opacity: 0.5, marginBottom: '16px' }} />
                 <h3>{t('wallet', 'empty')}</h3>
@@ -105,24 +180,15 @@ export default function WalletPage() {
               </div>
             )}
 
-            {showScanner && (
-              <div style={{ background: 'white', padding: '16px', borderRadius: '12px', marginTop: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                <h4 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>{t('wallet', 'scanTitle')}</h4>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px' }}>{t('wallet', 'scanDesc')}</p>
-                <textarea className="form-control" rows="4" value={pastedToken} onChange={e => setPastedToken(e.target.value)} style={{ fontSize: '0.7rem', fontFamily: 'monospace' }} />
-                <button className="btn btn-primary" style={{ width: '100%', marginTop: '8px' }} onClick={handleSimulateScan}>{t('wallet', 'btnImport')}</button>
-              </div>
-            )}
-
           </div>
 
           <div style={{ height: '80px', background: 'white', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-around', alignItems: 'center', paddingBottom: '20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--cdpi-blue)', cursor: 'pointer' }}>
+            <div onClick={() => setShowScanner(false)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--cdpi-blue)', cursor: 'pointer' }}>
               <CreditCard size={24} />
               <span style={{ fontSize: '0.7rem', marginTop: '4px' }}>{t('wallet', 'tabs').cards}</span>
             </div>
             
-            <div onClick={() => setShowScanner(!showScanner)} style={{ width: '56px', height: '56px', background: 'var(--cdpi-blue)', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'translateY(-20px)', cursor: 'pointer', boxShadow: '0 4px 12px rgba(10,37,64,0.3)' }}>
+            <div onClick={() => setShowScanner(true)} style={{ width: '56px', height: '56px', background: 'var(--cdpi-blue)', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'translateY(-20px)', cursor: 'pointer', boxShadow: '0 4px 12px rgba(10,37,64,0.3)' }}>
               <Camera size={28} />
             </div>
 
