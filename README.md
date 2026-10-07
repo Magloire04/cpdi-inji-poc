@@ -41,7 +41,7 @@ npm run dev
 
 Accédez à l'application via [http://localhost:3000](http://localhost:3000).
 
-## 🛠 Données "Sous Le Capot" (Developer Mode)
+## Données "Sous Le Capot" (Developer Mode)
 
 Pour faciliter la compréhension des décideurs technologiques, l'application intègre un mode développeur visible dans chaque module. Ce mode révèle :
 * Les "payloads" JSON bruts conformes W3C.
