@@ -1,10 +1,10 @@
-# 🛡️ CDPI Inji Trust Framework (PoC)
+# CDPI Inji Trust Framework (PoC)
 
 Ce projet est un Proof of Concept (PoC) développé pour le **Comité Directeur du Projet d'Identification (CDPI)**. L'objectif est de démontrer de manière fonctionnelle, visuelle et cryptographique le fonctionnement de l'infrastructure d'identité numérique décentralisée basée sur la suite **MOSIP Inji**.
 
 Au lieu de déployer les lourds microservices Java de MOSIP pour une simple démonstration, ce projet recrée exactement la même logique mathématique et les mêmes standards architecturaux dans une application Web légère de bout en bout (Next.js).
 
-## 🧩 Les Trois Piliers de l'Architecture
+## Les Trois Piliers de l'Architecture
 
 Le projet simule le "Triangle de Confiance" (Trust Framework) des identités décentralisées :
 
@@ -24,7 +24,7 @@ Le projet simule le "Triangle de Confiance" (Trust Framework) des identités dé
    *   Analyse le jeton JWT présenté par l'utilisateur.
    *   Vérifie mathématiquement la signature via la Clé Publique de l'Émetteur sans JAMAIS interroger la base de données gouvernementale. Toute falsification même à l'échelle d'un caractère invalide la preuve cryptographique.
 
-## 🚀 Lancement Rapide (Local)
+## Lancement Rapide (Local)
 
 Le projet utilise **Next.js**. Assurez-vous d'avoir Node.js (v18+) installé.
 
@@ -48,7 +48,7 @@ Pour faciliter la compréhension des décideurs technologiques, l'application in
 * Les JWT Signés.
 * Les statuts de validation des algorithmes ECDSA.
 
-## 🧰 Technologies Utilisées
+## Technologies Utilisées
 
 * **Framework :** [Next.js](https://nextjs.org/) (App Router, API Routes).
 * **Cryptographie :** [jose](https://github.com/panva/jose) (Génération JWT, JWS, Clés Elliptiques P-256).
